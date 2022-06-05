@@ -16,6 +16,13 @@ from flask_migrate import Migrate
 from flask_wtf import Form
 from forms import *
 from datetime import datetime
+from models import db, Artist, Venue, Show
+from flask_wtf.csrf import CsrfProtect
+
+
+
+
+
 
 
 #----------------------------------------------------------------------------#
@@ -26,79 +33,27 @@ app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
 db = SQLAlchemy(app)
-
 # TODO: connect to a local postgresql database
 migrate = Migrate(app, db)
 app.config['SQLALCHEMY_DATABASE_URI'] = SQLALCHEMY_DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.debug = True
+
 #----------------------------------------------------------------------------#
 # Models.
 #----------------------------------------------------------------------------#
 
-class Venue(db.Model):
-    __tablename__ = 'Venues'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.ARRAY(db.String))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    website = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean, default=False)
-    seeking_description = db.Column(db.String(500))
-    
-    def __repr__(self):
-        return f'<Venue {self.name, self.address, self.genres, self.shows}>'
-
-
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
-class Artist(db.Model):
-    __tablename__ = 'Artists'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    website = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean, default=False)
-    seeking_description = db.Column(db.String(500))
-    def __repr__(self):
-        return f'<Artist {self.id, self.name, self.genres, self.shows}>'
-    
-
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
-
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
-class Show(db.Model):
-    __tablename__ = 'shows'
-    id = db.Column(db.Integer, primary_key=True)
-    start_time = db.Column(db.DateTime,nullable=False)
-    venue = db.relationship('Venue', backref=db.backref('shows'))
-    venue_Id = db.Column(db.Integer,db.ForeignKey('Venues.id',onupdate='CASCADE', ondelete='CASCADE'),nullable=False)
-    artist = db.relationship('Artist', backref=db.backref('shows'))
-    artist_id = db.Column(db.Integer,db.ForeignKey('Artists.id', onupdate='CASCADE', ondelete='CASCADE'),nullable=False)  
-    start_time = db.Column(db.DateTime, nullable=False, default=datetime.utcnow())
-
-    def __repr__(self):
-        return f'<Show {self.id, self.start_time, self.artist}>'
-
-
 #----------------------------------------------------------------------------#
 # Filters.
 #----------------------------------------------------------------------------#
-
+def my_form_error(fieldName, errorMessages):
+    return flash(
+        'Some errors on ' +
+        fieldName.replace('_', ' ') +
+        ': ' +
+        ' '.join([str(message) for message in errorMessages]),
+        'warning'
+    )
 def format_datetime(value, format='medium'):
   date = dateutil.parser.parse(value)
   if format == 'full':
@@ -191,8 +146,9 @@ def search_venues():
 def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
-  venue = Venue.query.get(venue_id)
+  venue = Venue.query.get(venue_id) 
 
+  
   past_shows = []
   upcoming_shows = []
   show_attributes = None
@@ -246,6 +202,11 @@ def create_venue_submission():
 
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
+  form = VenueForm(csrf_enabled=True)
+  if not form.validate():
+        for fieldName, errorMessages in form.errors.items():
+            my_form_error(fieldName, errorMessages)
+        return redirect(url_for('create_venue_form'))
   new_venue = Venue(
   name = get_value('name'),
   genres = get_value('genres'),
@@ -482,11 +443,18 @@ def edit_venue_submission(venue_id):
 
 @app.route('/artists/create', methods=['GET'])
 def create_artist_form():
-  form = ArtistForm()
+  form=ArtistForm()
   return render_template('forms/new_artist.html', form=form)
+
 
 @app.route('/artists/create', methods=['POST'])
 def create_artist_submission():
+  form = ArtistForm(csrf_enabled=True)
+  if not form.validate():
+    for fieldName, errorMessages in form.errors.items():
+      my_form_error(fieldName, errorMessages)
+    return redirect(url_for('create_artist_form'))
+
   new_artist = Artist(
     name = get_value('name'),
     genres = get_value('genres'),
