@@ -148,23 +148,30 @@ def show_venue(venue_id):
   # TODO: replace with real venue data from the venues table, using venue_id
   venue = Venue.query.get(venue_id) 
 
-  
+
+  past_shows_query = Show.query.join(Venue, Show.venue_id == venue_id).filter(Show.start_time<=datetime.now()).all()
   past_shows = []
-  upcoming_shows = []
-  show_attributes = None
-
-  for show in venue.shows:
-    show_attributes = {
-      "artist_id": show.artist.id,
-      "artist_name": show.artist.name,
+ 
+  for show in past_shows_query:
+    past_shows.append({
+      "artist_id": show.artist_id,
+      "artist_name": show.artist_name,
       "artist_image_link": show.artist.image_link,
-      "start_time": show.start_time.strftime('%m/%d/%Y, %H:%M:%S')
-    }
+      "start_time": show.start_time
+    })
+  
+  upcoming_shows_query = Show.query.join(Venue, Show.venue_id ==venue_id).filter(Show.start_time>datetime.now()).all()
+  upcoming_shows = []
+   
+  for show in upcoming_shows_query:
+    upcoming_shows.append({
+      "artist_id": show.artist_id,
+      "artist_name": show.artist_name,
+      "artist_image_link": show.artist.image_link,
+      "start_time": show.start_time
+    })
 
-    if show.start_time <= datetime.now():
-      past_shows.append(show_attributes)
-    else:
-      upcoming_shows.append(show_attributes)
+ 
 
 
   venue_dict = {
@@ -309,22 +316,26 @@ def search_artists():
 def show_artist(artist_id):
   artist = Artist.query.get(artist_id)
 
+  
+  all_artist_query = Show.query.join(Venue, Show.artist_id == artist_id).filter(Show.start_time<=datetime.now()).all()
   past_shows = []
+  for show in all_artist_query:
+    past_shows.append({
+      "venue_id": show.venue_id,
+      "venue_name": show.venue_name,
+      "artist_image_link": show.artist.image_link,
+      "start_time": show.start_time
+    })
+  
+  upcoming_artist_query = Show.query.join(Venue, Show.artist_id ==artist_id).filter(Show.start_time>datetime.now()).all()
   upcoming_shows = []
-  show_assign = None
-
-  for show in artist.shows:
-    show_assign = {
-      "venue_id": show.venue.id,
-      "venue_name": show.venue.name,
-      "venue_image_link": show.venue.image_link,
-      "start_time": show.start_time.strftime('%m/%d/%Y, %H:%M:%S')
-    }
-    
-    if show.start_time <= datetime.now():
-      past_shows.append(show_assign)
-    else:
-      upcoming_shows.append(show_assign)
+  for show in upcoming_artist_query:
+    upcoming_shows.append({
+      "venue_id": show.venue_id,
+      "venue_name": show.venue_name,
+      "artist_image_link": show.artist.image_link,
+      "start_time": show.start_time
+    })
 
 
   artistry = {
